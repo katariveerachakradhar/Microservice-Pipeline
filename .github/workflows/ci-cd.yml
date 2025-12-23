@@ -17,7 +17,7 @@ jobs:
       uses: actions/checkout@v4
 
     # -------------------------
-    # Trivy Filesystem Scan (First - Shift Left Security)
+    # Trivy Filesystem Scan (Shift Left Security)
     # -------------------------
     - name: Trivy FS Scan
       uses: aquasecurity/trivy-action@master
@@ -28,9 +28,57 @@ jobs:
         ignore-unfixed: true
 
     # -------------------------
-    # Setup Runtime
+    # Setup Python
     # -------------------------
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-
+        python-version: '3.10'
+
+    # -------------------------
+    # Install Dependencies
+    # -------------------------
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+
+    # -------------------------
+    # Run Unit Tests
+    # -------------------------
+    - name: Run Tests
+      run: |
+        pytest tests/
+
+    # -------------------------
+    # Docker Login
+    # -------------------------
+    - name: Docker Login
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    # -------------------------
+    # Build Docker Image
+    # -------------------------
+    - name: Build Docker Image
+      run: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/microservice:latest .
+
+    # -------------------------
+    # Trivy Image Scan
+    # -------------------------
+    - name: Trivy Image Scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ secrets.DOCKER_USERNAME }}/microservice:latest
+        severity: HIGH,CRITICAL
+        exit-code: 1
+        ignore-unfixed: true
+
+    # -------------------------
+    # Push Docker Image
+    # -------------------------
+    - name: Push Docker Image
+      run: |
+        docker push ${{ secrets.DOCKER_USERNAME }}/microservice:latest
